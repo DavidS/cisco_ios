@@ -35,14 +35,16 @@ end
 
 COMMON_ARGS = '--modulepath spec/fixtures/modules --deviceconfig spec/fixtures/acceptance-device.conf --target sut'.freeze
 
-def run_device(options = { allow_changes: true, allow_warnings: false })
+def run_device(options = { allow_changes: true, allow_warnings: false, use_expect: true })
   result = Open3.capture2e("bundle exec puppet device --apply #{@file.path} #{COMMON_ARGS} --verbose --trace --debug")
-  if options[:allow_changes] == false
-    expect(result[0]).not_to match(%r{^Notice: /Stage\[main\]})
+  if options[:use_expect]
+    if options[:allow_changes] == false
+      expect(result[0]).not_to match(%r{^Notice: /Stage\[main\]})
+    end
+    expect(result[0]).not_to match %r{Error:}
+    return unless options[:allow_warnings] == false
+    expect(result[0]).not_to match %r{Warning:}
   end
-  expect(result[0]).not_to match %r{Error:}
-  return unless options[:allow_warnings] == false
-  expect(result[0]).not_to match %r{Warning:}
 end
 
 def run_resource(resource_type, resource_title = nil, verbose = true)
@@ -66,6 +68,32 @@ end
 def fact
   result = Open3.capture2e("bundle exec puppet device #{COMMON_ARGS} --facts")
   JSON.parse(result[0])['values']
+end
+
+class XeCheck
+  attr_reader :xe_version_tested
+  attr_reader :device_is_xe
+  @xe_version_tested = false
+  @device_is_xe = false
+
+  def self.device_xe?
+    unless @xe_version_tested
+      pp = <<-EOS
+    ios_config { "show version ios XE":
+      command =>  'do show version | include IOS-XE Software',
+      idempotent_regex => 'IOS-XE Software',
+      idempotent_regex_options => ['ignorecase'],
+    }
+        EOS
+      make_site_pp(pp)
+      result = run_device(allow_changes: true, use_expect: false)
+      if result.output =~ %r{(?:include IOS-XE Software).*(IOS-XE Software,)}
+        @device_is_xe = true
+      end
+      @xe_version_tested = true
+    end
+    @device_is_xe
+  end
 end
 
 RSpec.configure do |c|
