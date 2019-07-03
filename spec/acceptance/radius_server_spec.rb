@@ -25,7 +25,7 @@ describe 'radius_server' do
     # Check puppet resource
     result = run_resource('radius_server', '2.2.2.2')
     # Does our target device support the 'new' Radius Server syntax?
-    # If so, should be present, otherwise we will skip test
+    # If so, should be present, otherwise we will fail test and a human needs to revisit this
     if result =~ %r{ensure.*present}
       expect(result).to match(%r{2.2.2.2.*})
       # Has a key, encrypted by default on 2960
@@ -42,14 +42,14 @@ describe 'radius_server' do
       expect(result).to match(%r{auth_port.*1642})
       expect(result).to match(%r{timeout.*42})
     else
-      skip 'Radius server 2.2.2.2 not present, device not compatible'
+      fail 'Radius server 2.2.2.2 not present, device might not be compatible'
     end
   end
 
   it 'delete radius_server' do
     result = run_resource('radius_server', '2.2.2.2')
     # Does our target device support the 'new' Radius Server syntax?
-    # If so, should be present, otherwise we will skip test
+    # If so, should be present, otherwise we will fail test and a human needs to revisit this
     if result =~ %r{ensure.*present}
       pp = <<-EOS
   radius_server { '2.2.2.2':
@@ -65,7 +65,7 @@ describe 'radius_server' do
       expect(result).to match(%r{2.2.2.2.*})
       expect(result).to match(%r{ensure.*absent})
     else
-      skip 'Radius server 2.2.2.2 not present, device not compatible'
+      fail 'Radius server 2.2.2.2 not present, device might not be compatible'
     end
   end
 end
